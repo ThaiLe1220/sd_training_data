@@ -1,15 +1,16 @@
 import os
+import time
 import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
+# from webdriver_manager.chrome import ChromeDriverManager
 
 
 # Function to download video and save metadata
-def download_videos_and_save_metadata(driver, category_name, category_url):
+def download_videos_and_save_metadata(category_name, category_url):
     # Open the category page
     driver.get(category_url)
 
@@ -100,14 +101,14 @@ def read_categories(file_path):
             if line.strip() and not line.startswith("mixkit.co"):
                 parts = line.strip().split("]")
                 category_name = parts[0].strip("[").strip()
-                category_max_page = parts[1].strip(" [").strip()
+                category_max_page = int(parts[1].strip(" [").strip()) 
                 category_url = parts[2].strip()
                 categories[category_name] = (category_url, category_max_page)
     return categories
 
 
 # Initialize the WebDriver
-service = Service(ChromeDriverManager().install())
+service = Service(executable_path="C:\Program Files (x86)\chromedriver.exe")
 driver = webdriver.Chrome(service=service)
 
 # Directory for saving output
@@ -121,10 +122,20 @@ categories = read_categories(source_file_path)
 
 # # Process each category
 for category_name, (category_url, category_max_page) in categories.items():
-    # download_videos_and_save_metadata(driver, category_name, category_url)
-    print(category_name)
-    print(category_max_page)
-    print(category_url)
+    for page in range(1, category_max_page + 1):
+        start_time = time.time()
+        page_url = f"{category_url}?page={page}"
+        
+        print("-" * 40)
+        print(f"Page {page} out of {category_max_page}")
+        print("-" * 40)
+
+        download_videos_and_save_metadata(category_name, page_url)
+        print("Process took %s seconds" %(time.time() - start_time))
+
+    # print(category_name)
+    # print(category_max_page)
+    # print(category_url)
 
 # Close the WebDriver
 driver.quit()
