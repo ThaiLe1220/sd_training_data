@@ -9,6 +9,8 @@ def merge_video_data_and_files(output_dir, merged_dir):
     os.makedirs(merged_dir, exist_ok=True)
 
     video_data_set = set()
+    category_video_count = {}
+    total_video_count = 0
 
     # Iterate through each category directory
     for category_dir in os.listdir(output_dir):
@@ -16,6 +18,7 @@ def merge_video_data_and_files(output_dir, merged_dir):
         if os.path.isdir(category_path):
             videos_data_file = os.path.join(category_path, "videos-data.txt")
             if os.path.exists(videos_data_file):
+                category_video_count[category_dir] = 0
                 # Open the category's video data file in read mode
                 with open(videos_data_file, "r", encoding="utf-8") as f:
                     # Read each line and add it to the set
@@ -38,11 +41,18 @@ def merge_video_data_and_files(output_dir, merged_dir):
                                         merged_dir, video_name
                                     )
                                     shutil.copy(src_video_path, dst_video_path)
+                                    category_video_count[category_dir] += 1
+                                    total_video_count += 1
 
     # Sort the video data and write it to the merged data file
     with open(merged_data_file, "w", encoding="utf-8") as merged_file:
         for data in sorted(video_data_set):
             merged_file.write(data + "\n")
+
+    # Print out the number of videos in each category and the total number of videos
+    for category, count in category_video_count.items():
+        print(f"Category '{category}' has {count} videos.")
+    print(f"Total number of videos: {total_video_count}")
 
 
 # Directory containing the original output data

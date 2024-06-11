@@ -1,3 +1,4 @@
+# mixkit_scrape.py
 import os
 import requests
 from selenium import webdriver
@@ -9,23 +10,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 
 # Function to download video and save metadata
-def download_videos_and_save_metadata(driver, category_name, category_url):
-    # Open the category page
-    driver.get(category_url)
-
-    # Wait for the elements to be present
-    wait = WebDriverWait(driver, 10)
-    if "vertical" in category_url:
-        wait.until(
-            EC.presence_of_all_elements_located((By.CLASS_NAME, "item-grid-card"))
-        )
-        video_elements = driver.find_elements(By.CLASS_NAME, "item-grid-card")
-    else:
-        wait.until(
-            EC.presence_of_all_elements_located((By.CLASS_NAME, "item-grid__item"))
-        )
-        video_elements = driver.find_elements(By.CLASS_NAME, "item-grid__item")
-
+def download_videos_and_save_metadata(driver, category_name, category_url, max_page):
     # Create output directory for the category
     category_dir = os.path.join(output_dir, category_name)
     os.makedirs(category_dir, exist_ok=True)
@@ -41,61 +26,82 @@ def download_videos_and_save_metadata(driver, category_name, category_url):
                 video_name = line.split("|")[0]
                 existing_videos.add(video_name)
 
-    # Loop through each video element and extract the details
-    with open(videos_data_file, "a") as f:
-        for video_element in video_elements:
-            try:
-                video_tag = video_element.find_element(By.TAG_NAME, "video")
-                video_source = video_tag.get_attribute("src")
-                video_source = video_source.replace("360.mp4", "720.mp4")
-            except:
-                video_source = "No video source found"
+    # Loop through each page
+    for page in range(1, int(max_page) + 1):
+        # Construct the URL for the current page
+        page_url = f"{category_url.rstrip('/')}/?page={page}"
 
-            try:
-                video_title = video_element.find_element(
-                    By.CLASS_NAME, "item-grid-card__title"
-                ).text
-            except:
-                video_title = "No title found"
+        # Open the page
+        driver.get(page_url)
 
-            try:
-                video_description = video_element.find_element(
-                    By.CLASS_NAME, "item-grid-card__description"
-                ).text
-            except:
-                video_description = "No description found"
+        # Wait for the elements to be present
+        wait = WebDriverWait(driver, 10)
+        if "vertical" in category_url:
+            wait.until(
+                EC.presence_of_all_elements_located((By.CLASS_NAME, "item-grid-card"))
+            )
+            video_elements = driver.find_elements(By.CLASS_NAME, "item-grid-card")
+        else:
+            wait.until(
+                EC.presence_of_all_elements_located((By.CLASS_NAME, "item-grid__item"))
+            )
+            video_elements = driver.find_elements(By.CLASS_NAME, "item-grid__item")
 
-            # Get the video id or name
-            video_name = video_source.split("/")[-1]
+        # Loop through each video element and extract the details
+        with open(videos_data_file, "a", encoding="utf-8") as f:
+            for video_element in video_elements:
+                try:
+                    video_tag = video_element.find_element(By.TAG_NAME, "video")
+                    video_source = video_tag.get_attribute("src")
+                    video_source = video_source.replace("360.mp4", "720.mp4")
+                except:
+                    video_source = "No video source found"
 
-            # Skip if video already exists
-            if video_name in existing_videos:
-                print(f"Skipping {video_name}, already downloaded.")
-                continue
+                try:
+                    video_title = video_element.find_element(
+                        By.CLASS_NAME, "item-grid-card__title"
+                    ).text
+                except:
+                    video_title = "No title found"
 
-            # Print the video details
-            print("Video Source:", video_source)
-            print("Video Title:", video_title)
-            print("Video Description:", video_description)
-            print("-" * 40)
+                try:
+                    video_description = video_element.find_element(
+                        By.CLASS_NAME, "item-grid-card__description"
+                    ).text
+                except:
+                    video_description = "No description found"
 
-            # Save the video
-            if video_source != "No video source found":
-                video_path = os.path.join(category_dir, video_name)
-                with requests.get(video_source, stream=True) as r:
-                    r.raise_for_status()
-                    with open(video_path, "wb") as file:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            file.write(chunk)
+                # Get the video id or name
+                video_name = video_source.split("/")[-1]
 
-            # Save the video details in the specified format
-            f.write(f"{video_name}|{video_title}|{video_description}\n")
+                # Skip if video already exists
+                if video_name in existing_videos:
+                    print(f"Skipping {video_name}, already downloaded.")
+                    continue
+
+                # Print the video details
+                print("Video Source:", video_source)
+                print("Video Title:", video_title)
+                print("Video Description:", video_description)
+                print("-" * 40)
+
+                # Save the video
+                if video_source != "No video source found":
+                    video_path = os.path.join(category_dir, video_name)
+                    with requests.get(video_source, stream=True, timeout=30) as r:
+                        r.raise_for_status()
+                        with open(video_path, "wb") as file:
+                            for chunk in r.iter_content(chunk_size=8192):
+                                file.write(chunk)
+
+                # Save the video details in the specified format
+                f.write(f"{video_name}|{video_title}|{video_description}\n")
 
 
 # Read categories from source.txt
 def read_categories(file_path):
     categories = {}
-    with open(file_path, "r") as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         for line in file:
             if line.strip() and not line.startswith("mixkit.co"):
                 parts = line.strip().split("]")
@@ -114,17 +120,16 @@ driver = webdriver.Chrome(service=service)
 output_dir = "output/mixkit.co"
 
 # Path to the source file
-source_file_path = "source.txt"
+source_file_path = "mixkit_source.txt"
 
 # Read categories and their URLs
 categories = read_categories(source_file_path)
 
-# # Process each category
+# Process each category
 for category_name, (category_url, category_max_page) in categories.items():
-    # download_videos_and_save_metadata(driver, category_name, category_url)
-    print(category_name)
-    print(category_max_page)
-    print(category_url)
+    download_videos_and_save_metadata(
+        driver, category_name, category_url, category_max_page
+    )
 
 # Close the WebDriver
 driver.quit()

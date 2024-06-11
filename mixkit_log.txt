@@ -1,0 +1,17 @@
+(base) thai@zeus:~/Desktop/Eugene/sd_training_data$ python mixkit_data_process.py 
+Category 'christmas' has 980 videos.
+Category 'romance' has 266 videos.
+Category 'lifestyle' has 988 videos.
+Category 'background' has 1004 videos.
+Category 'vertical' has 0 videos.
+Category 'light' has 1001 videos.
+Category 'food' has 1188 videos.
+Category 'nature' has 1001 videos.
+Category 'horror' has 498 videos.
+Category 'funny' has 190 videos.
+Category 'transport' has 502 videos.
+Category 'animals' has 1006 videos.
+Total number of videos: 8624
+All valid video data and files have been merged into output/mixkit.co/__merged__
+
+
